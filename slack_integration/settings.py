@@ -21,7 +21,7 @@ SECRET_KEY = config('SECRET_KEY', default='django-insecure-development-key')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,bece4f73c26e.ngrok-free.app').split(',')
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,21324abb9c81.ngrok-free.app').split(',')
 
 # URL Configuration
 APPEND_SLASH = False  # Allow URLs without trailing slashes for Slack webhooks
@@ -199,7 +199,8 @@ CORS_ALLOW_CREDENTIALS = True
 # CSRF Settings
 CSRF_TRUSTED_ORIGINS = [
     'https://831d1c9e8075.ngrok-free.app',  # Old ngrok URL
-    'https://46550c9cd1eb.ngrok-free.app',  # New ngrok URL
+    'https://46550c9cd1eb.ngrok-free.app',  # Old ngrok URL
+    'https://21324abb9c81.ngrok-free.app',  # Current ngrok URL
     'http://localhost:8000',
     'http://127.0.0.1:8000',
 ]
