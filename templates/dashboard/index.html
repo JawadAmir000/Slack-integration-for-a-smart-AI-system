@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Slack Real-Time Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+
+        .dashboard-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            margin: 20px;
+            min-height: calc(100vh - 40px);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4a90e2 0%, #7b68ee 100%);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 20px 20px 0 0;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .connection-status {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+
+        .status-connected {
+            background-color: #28a745;
+            box-shadow: 0 0 10px rgba(40, 167, 69, 0.5);
+        }
+
+        .status-disconnected {
+            background-color: #dc3545;
+            box-shadow: 0 0 10px rgba(220, 53, 69, 0.5);
+        }
+
+        .status-connecting {
+            background-color: #ffc107;
+            box-shadow: 0 0 10px rgba(255, 193, 7, 0.5);
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .stats-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 15px 0;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+            border-left: 4px solid #4a90e2;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .stats-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+        }
+
+        .stats-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #4a90e2;
+            margin: 0;
+        }
+
+        .stats-label {
+            color: #666;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .message-feed {
+            background: white;
+            border-radius: 15px;
+            height: 500px;
+            overflow-y: auto;
+            padding: 0;
+            margin: 20px 0;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+        }
+
+        .message-item {
+            padding: 15px 20px;
+            border-bottom: 1px solid #f1f3f4;
+            transition: background-color 0.3s ease;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        .message-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .message-item:last-child {
+            border-bottom: none;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .message-type {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .message-type.channel {
+            background-color: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .message-type.dm {
+            background-color: #fce4ec;
+            color: #c2185b;
+        }
+
+        .message-type.notification {
+            background-color: #fff3e0;
+            color: #f57c00;
+        }
+
+        .message-time {
+            color: #999;
+            font-size: 0.85rem;
+        }
+
+        .message-content {
+            color: #333;
+            line-height: 1.5;
+            margin: 8px 0;
+        }
+
+        .message-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 8px;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .controls {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #4a90e2 0%, #7b68ee 100%);
+            border: none;
+            border-radius: 10px;
+            padding: 10px 20px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(74, 144, 226, 0.3);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+            border: none;
+            border-radius: 10px;
+            padding: 10px 20px;
+            font-weight: 600;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            border: none;
+            border-radius: 10px;
+            padding: 8px 16px;
+            font-size: 0.9rem;
+        }
+
+        .form-control, .form-select {
+            border-radius: 10px;
+            border: 2px solid #e9ecef;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: #4a90e2;
+            box-shadow: 0 0 0 0.2rem rgba(74, 144, 226, 0.25);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            color: #ddd;
+        }
+
+        .workspace-selector {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            border-radius: 10px;
+        }
+
+        .workspace-selector option {
+            color: #333;
+        }
+
+        .scrollbar-thin::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .scrollbar-thin::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        .scrollbar-thin::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 10px;
+        }
+
+        .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+            background: #a1a1a1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid p-0">
+        <div class="dashboard-container">
+            <!-- Header -->
+            <div class="header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h1 class="mb-1">
+                            <i class="fab fa-slack"></i>
+                            Slack Real-Time Dashboard
+                        </h1>
+                        <p class="mb-0 opacity-75">Monitor your Slack messages in real-time</p>
+                    </div>
+                    <div class="d-flex align-items-center gap-3">
+                        <select class="form-select workspace-selector" id="workspaceSelect">
+                            <option value="">All Workspaces</option>
+                        </select>
+                        <div class="d-flex align-items-center">
+                            <span class="connection-status status-disconnected" id="connectionStatus"></span>
+                            <span id="connectionText">Disconnected</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="container-fluid p-4">
+                <!-- Stats Row -->
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="stats-card">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div>
+                                    <p class="stats-number" id="totalMessages">0</p>
+                                    <p class="stats-label">Total Messages</p>
+                                </div>
+                                <i class="fas fa-comments fa-2x text-primary opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stats-card">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div>
+                                    <p class="stats-number" id="channelMessages">0</p>
+                                    <p class="stats-label">Channel Messages</p>
+                                </div>
+                                <i class="fas fa-hashtag fa-2x text-info opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stats-card">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div>
+                                    <p class="stats-number" id="directMessages">0</p>
+                                    <p class="stats-label">Direct Messages</p>
+                                </div>
+                                <i class="fas fa-user-friends fa-2x text-danger opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stats-card">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div>
+                                    <p class="stats-number" id="activeWorkspaces">0</p>
+                                    <p class="stats-label">Active Workspaces</p>
+                                </div>
+                                <i class="fas fa-building fa-2x text-success opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <!-- Controls -->
+                    <div class="col-md-4">
+                        <div class="controls">
+                            <h5><i class="fas fa-cog"></i> Connection Controls</h5>
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-primary" id="connectBtn" onclick="connectWebSocket()">
+                                    <i class="fas fa-play"></i> Connect
+                                </button>
+                                <button class="btn btn-secondary" id="disconnectBtn" onclick="disconnectWebSocket()" disabled>
+                                    <i class="fas fa-stop"></i> Disconnect
+                                </button>
+                                <button class="btn btn-success" onclick="sendTestMessage()">
+                                    <i class="fas fa-paper-plane"></i> Send Test Message
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="controls">
+                            <h5><i class="fas fa-filter"></i> Message Filters</h5>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="filterChannels" checked>
+                                <label class="form-check-label" for="filterChannels">
+                                    Channel Messages
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="filterDMs" checked>
+                                <label class="form-check-label" for="filterDMs">
+                                    Direct Messages
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="filterNotifications" checked>
+                                <label class="form-check-label" for="filterNotifications">
+                                    Notifications
+                                </label>
+                            </div>
+                            <button class="btn btn-outline-secondary btn-sm mt-2" onclick="clearMessages()">
+                                <i class="fas fa-trash"></i> Clear Messages
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Message Feed -->
+                    <div class="col-md-8">
+                        <div class="message-feed scrollbar-thin" id="messageFeed">
+                            <div class="empty-state">
+                                <i class="fas fa-comment-slash"></i>
+                                <h5>No messages yet</h5>
+                                <p>Connect to start receiving real-time Slack messages</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Real-time WebSocket Script -->
+    <script>
+        let socket = null;
+        let messageCount = 0;
+        let channelCount = 0;
+        let dmCount = 0;
+        let workspaces = new Set();
+        let isConnected = false;
+
+        // DOM Elements
+        const connectionStatus = document.getElementById('connectionStatus');
+        const connectionText = document.getElementById('connectionText');
+        const messageFeed = document.getElementById('messageFeed');
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const totalMessagesEl = document.getElementById('totalMessages');
+        const channelMessagesEl = document.getElementById('channelMessages');
+        const directMessagesEl = document.getElementById('directMessages');
+        const activeWorkspacesEl = document.getElementById('activeWorkspaces');
+
+        function updateConnectionStatus(status, text) {
+            connectionStatus.className = `connection-status status-${status}`;
+            connectionText.textContent = text;
+        }
+
+        function updateStats() {
+            totalMessagesEl.textContent = messageCount;
+            channelMessagesEl.textContent = channelCount;
+            directMessagesEl.textContent = dmCount;
+            activeWorkspacesEl.textContent = workspaces.size;
+        }
+
+        function connectWebSocket() {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                return;
+            }
+
+            updateConnectionStatus('connecting', 'Connecting...');
+
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws/slack/messages/`;
+
+            socket = new WebSocket(wsUrl);
+
+            socket.onopen = function(event) {
+                updateConnectionStatus('connected', 'Connected');
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+                isConnected = true;
+                addSystemMessage('Connected to Slack real-time dashboard', 'success');
+            };
+
+            socket.onmessage = function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    handleWebSocketMessage(data);
+                } catch (error) {
+                    console.error('Error parsing WebSocket message:', error);
+                    addSystemMessage('Error parsing message: ' + error.message, 'error');
+                }
+            };
+
+            socket.onerror = function(error) {
+                console.error('WebSocket error:', error);
+                addSystemMessage('WebSocket error occurred', 'error');
+            };
+
+            socket.onclose = function(event) {
+                updateConnectionStatus('disconnected', 'Disconnected');
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+                isConnected = false;
+                addSystemMessage('Disconnected from dashboard', 'warning');
+            };
+        }
+
+        function disconnectWebSocket() {
+            if (socket) {
+                socket.close();
+                socket = null;
+            }
+        }
+
+        function handleWebSocketMessage(data) {
+            const messageType = data.type || 'unknown';
+
+            if (messageType === 'connection_established') {
+                addSystemMessage(`Connection established for user: ${data.user_id}`, 'info');
+                return;
+            }
+
+            if (messageType === 'pong') {
+                addSystemMessage('Connection health check: OK', 'info');
+                return;
+            }
+
+            if (messageType === 'slack_channel_message' || messageType === 'slack_dm') {
+                addSlackMessage(data.message, messageType);
+                return;
+            }
+
+            if (messageType === 'notification') {
+                addNotificationMessage(data.notification);
+                return;
+            }
+
+            // Handle other message types
+            addSystemMessage(`Received: ${messageType}`, 'info');
+        }
+
+        function addSlackMessage(message, type) {
+            if (!shouldShowMessage(type)) return;
+
+            messageCount++;
+            if (type === 'slack_channel_message') {
+                channelCount++;
+            } else if (type === 'slack_dm') {
+                dmCount++;
+            }
+
+            if (message.workspace_name) {
+                workspaces.add(message.workspace_name);
+            }
+
+            updateStats();
+
+            const messageEl = document.createElement('div');
+            messageEl.className = 'message-item';
+            messageEl.innerHTML = `
+                <div class="message-header">
+                    <span class="message-type ${type === 'slack_channel_message' ? 'channel' : 'dm'}">
+                        ${type === 'slack_channel_message' ? 'Channel' : 'DM'}
+                    </span>
+                    <span class="message-time">${formatTime(new Date())}</span>
+                </div>
+                <div class="message-content">
+                    ${escapeHtml(message.text || 'No content')}
+                </div>
+                <div class="message-meta">
+                    ${message.workspace_name ? `<div class="meta-item"><i class="fas fa-building"></i> ${escapeHtml(message.workspace_name)}</div>` : ''}
+                    ${message.channel_name ? `<div class="meta-item"><i class="fas fa-hashtag"></i> ${escapeHtml(message.channel_name)}</div>` : ''}
+                    ${message.user_id ? `<div class="meta-item"><i class="fas fa-user"></i> ${escapeHtml(message.user_id)}</div>` : ''}
+                </div>
+            `;
+
+            // Remove empty state if present
+            const emptyState = messageFeed.querySelector('.empty-state');
+            if (emptyState) {
+                emptyState.remove();
+            }
+
+            messageFeed.insertBefore(messageEl, messageFeed.firstChild);
+
+            // Keep only last 100 messages
+            while (messageFeed.children.length > 100) {
+                messageFeed.removeChild(messageFeed.lastChild);
+            }
+        }
+
+        function addNotificationMessage(notification) {
+            if (!shouldShowMessage('notification')) return;
+
+            messageCount++;
+            updateStats();
+
+            const messageEl = document.createElement('div');
+            messageEl.className = 'message-item';
+            messageEl.innerHTML = `
+                <div class="message-header">
+                    <span class="message-type notification">Notification</span>
+                    <span class="message-time">${formatTime(new Date())}</span>
+                </div>
+                <div class="message-content">
+                    ${escapeHtml(JSON.stringify(notification, null, 2))}
+                </div>
+            `;
+
+            const emptyState = messageFeed.querySelector('.empty-state');
+            if (emptyState) {
+                emptyState.remove();
+            }
+
+            messageFeed.insertBefore(messageEl, messageFeed.firstChild);
+        }
+
+        function addSystemMessage(message, level = 'info') {
+            const messageEl = document.createElement('div');
+            messageEl.className = 'message-item';
+            messageEl.innerHTML = `
+                <div class="message-header">
+                    <span class="message-type ${level === 'error' ? 'dm' : level === 'success' ? 'channel' : 'notification'}">${level.toUpperCase()}</span>
+                    <span class="message-time">${formatTime(new Date())}</span>
+                </div>
+                <div class="message-content">
+                    <i class="fas fa-${level === 'error' ? 'exclamation-triangle' : level === 'success' ? 'check-circle' : 'info-circle'}"></i>
+                    ${escapeHtml(message)}
+                </div>
+            `;
+
+            const emptyState = messageFeed.querySelector('.empty-state');
+            if (emptyState) {
+                emptyState.remove();
+            }
+
+            messageFeed.insertBefore(messageEl, messageFeed.firstChild);
+        }
+
+        function shouldShowMessage(type) {
+            if (type === 'slack_channel_message') {
+                return document.getElementById('filterChannels').checked;
+            }
+            if (type === 'slack_dm') {
+                return document.getElementById('filterDMs').checked;
+            }
+            if (type === 'notification') {
+                return document.getElementById('filterNotifications').checked;
+            }
+            return true;
+        }
+
+        function sendTestMessage() {
+            if (!isConnected) {
+                addSystemMessage('Please connect first before sending test messages', 'error');
+                return;
+            }
+
+            // Send test message via dashboard API (this will be received via WebSocket)
+            fetch('/dashboard/api/test-message/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    type: 'channel_message',
+                    count: 1
+                })
+            }).then(response => {
+                if (response.ok) {
+                    addSystemMessage('Test message sent!', 'success');
+                } else {
+                    addSystemMessage('Failed to send test message', 'error');
+                }
+            }).catch(error => {
+                addSystemMessage('Error sending test message: ' + error.message, 'error');
+            });
+        }
+
+        function clearMessages() {
+            messageFeed.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-comment-slash"></i>
+                    <h5>No messages</h5>
+                    <p>Messages cleared. New messages will appear here.</p>
+                </div>
+            `;
+            messageCount = 0;
+            channelCount = 0;
+            dmCount = 0;
+            workspaces.clear();
+            updateStats();
+        }
+
+        function formatTime(date) {
+            return date.toLocaleTimeString();
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // Auto-connect on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            updateStats();
+            // Auto-connect after a short delay
+            setTimeout(connectWebSocket, 1000);
+        });
+
+        // Reconnect on page focus (if disconnected)
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden && !isConnected) {
+                connectWebSocket();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,447 @@
+{% extends 'base.html' %}
+
+{% block title %}Slack Configuration Management{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h2">
+                <i class="fas fa-cogs slack-logo me-2"></i>
+                Slack Configuration Management
+            </h1>
+            <button class="btn btn-slack" data-bs-toggle="modal" data-bs-target="#addConfigModal">
+                <i class="fas fa-plus me-2"></i>Add New Configuration
+            </button>
+        </div>
+
+        <!-- Alert container -->
+        <div id="alertContainer"></div>
+
+        <!-- Configuration List -->
+        <div class="card">
+            <div class="card-header card-header-slack">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-list me-2"></i>Client Configurations
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="configList">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Loading configurations...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Configuration Modal -->
+<div class="modal fade" id="addConfigModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-plus me-2"></i>Add New Slack Configuration
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addConfigForm">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="clientIdentifier" class="form-label">Client Identifier</label>
+                                <input type="text" class="form-control" id="clientIdentifier" name="client_identifier" required>
+                                <div class="form-text">Unique identifier for URLs (lowercase, alphanumeric, hyphens, underscores only)</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="appName" class="form-label">App Name</label>
+                                <input type="text" class="form-control" id="appName" name="app_name" required>
+                                <div class="form-text">Display name for the Slack app</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="clientName" class="form-label">Client Name</label>
+                                <input type="text" class="form-control" id="clientName" name="client_name" required>
+                                <div class="form-text">Human-readable client name</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="clientEmail" class="form-label">Client Email</label>
+                                <input type="email" class="form-control" id="clientEmail" name="client_email">
+                                <div class="form-text">Contact email for this client</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+                    <h6>Slack App Configuration</h6>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="clientId" class="form-label">Client ID</label>
+                                <input type="text" class="form-control" id="clientId" name="client_id" required>
+                                <div class="form-text">From Slack app's OAuth & Permissions page</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="redirectUri" class="form-label">Redirect URI</label>
+                                <input type="url" class="form-control" id="redirectUri" name="redirect_uri" required>
+                                <div class="form-text">OAuth redirect URI for this client</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="clientSecret" class="form-label">Client Secret</label>
+                                <input type="password" class="form-control" id="clientSecret" name="client_secret" required>
+                                <div class="form-text">Keep this secure and never share it</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="signingSecret" class="form-label">Signing Secret</label>
+                                <input type="password" class="form-control" id="signingSecret" name="signing_secret" required>
+                                <div class="form-text">For verifying webhook requests</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="scopes" class="form-label">OAuth Scopes</label>
+                        <input type="text" class="form-control" id="scopes" name="scopes" value="channels:read,chat:write,files:write,users:read,im:write">
+                        <div class="form-text">Comma-separated list of OAuth scopes</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-slack" onclick="saveConfiguration()">
+                    <i class="fas fa-save me-2"></i>Save Configuration
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Configuration Modal -->
+<div class="modal fade" id="editConfigModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-edit me-2"></i>Edit Configuration
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editConfigForm">
+                    {% csrf_token %}
+                    <input type="hidden" id="editClientIdentifier" name="client_identifier">
+                    <!-- Form fields similar to add form but with edit prefix -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editAppName" class="form-label">App Name</label>
+                                <input type="text" class="form-control" id="editAppName" name="app_name" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editClientName" class="form-label">Client Name</label>
+                                <input type="text" class="form-control" id="editClientName" name="client_name" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="editClientEmail" class="form-label">Client Email</label>
+                        <input type="email" class="form-control" id="editClientEmail" name="client_email">
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="editIsActive" name="is_active" checked>
+                        <label class="form-check-label" for="editIsActive">
+                            Configuration is active
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-slack" onclick="updateConfiguration()">
+                    <i class="fas fa-save me-2"></i>Update Configuration
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let configurations = [];
+
+// Load configurations on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadConfigurations();
+});
+
+// Load all configurations
+async function loadConfigurations() {
+    try {
+        const response = await axios.get('/api/slack/config/');
+        configurations = response.data.configurations;
+        renderConfigurations();
+    } catch (error) {
+        handleApiError(error);
+        document.getElementById('configList').innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                Failed to load configurations. Please try again.
+            </div>
+        `;
+    }
+}
+
+// Render configurations list
+function renderConfigurations() {
+    const configList = document.getElementById('configList');
+
+    if (configurations.length === 0) {
+        configList.innerHTML = `
+            <div class="text-center text-muted">
+                <i class="fas fa-inbox fa-3x mb-3"></i>
+                <h5>No configurations found</h5>
+                <p>Click "Add New Configuration" to create your first Slack app configuration.</p>
+            </div>
+        `;
+        return;
+    }
+
+    configList.innerHTML = configurations.map(config => `
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h5 class="card-title mb-1">
+                            ${config.app_name}
+                            ${config.is_verified ? '<span class="badge bg-success ms-2">Verified</span>' : '<span class="badge bg-warning ms-2">Not Verified</span>'}
+                            ${config.is_active ? '' : '<span class="badge bg-secondary ms-2">Inactive</span>'}
+                        </h5>
+                        <p class="card-text text-muted mb-1">
+                            <strong>Client:</strong> ${config.client_name} (${config.client_identifier})
+                        </p>
+                        <p class="card-text text-muted mb-1">
+                            <strong>Usage:</strong> ${config.usage_count} times
+                            ${config.last_used_at ? '• Last used: ' + new Date(config.last_used_at).toLocaleDateString() : ''}
+                        </p>
+                        <p class="card-text text-muted mb-0">
+                            <strong>Status:</strong> ${config.is_configured ? 'Configured' : 'Not configured'}
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <div class="btn-group" role="group">
+                            <button class="btn btn-outline-primary btn-sm" onclick="verifyConfiguration('${config.client_identifier}')" title="Verify Configuration">
+                                <i class="fas fa-check-circle"></i>
+                            </button>
+                            <button class="btn btn-outline-info btn-sm" onclick="editConfiguration('${config.client_identifier}')" title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-outline-success btn-sm" onclick="viewOAuthUrl('${config.client_identifier}')" title="View OAuth URL">
+                                <i class="fas fa-link"></i>
+                            </button>
+                            <button class="btn btn-outline-danger btn-sm" onclick="deleteConfiguration('${config.client_identifier}')" title="Delete">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Save new configuration
+async function saveConfiguration() {
+    const form = document.getElementById('addConfigForm');
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+
+    try {
+        const response = await axios.post('/api/slack/config/', data);
+        showAlert('Configuration created successfully!', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('addConfigModal')).hide();
+        form.reset();
+        await loadConfigurations();
+    } catch (error) {
+        handleApiError(error);
+    }
+}
+
+// Edit configuration
+function editConfiguration(clientIdentifier) {
+    const config = configurations.find(c => c.client_identifier === clientIdentifier);
+    if (!config) return;
+
+    document.getElementById('editClientIdentifier').value = config.client_identifier;
+    document.getElementById('editAppName').value = config.app_name;
+    document.getElementById('editClientName').value = config.client_name;
+    document.getElementById('editClientEmail').value = config.client_email || '';
+    document.getElementById('editIsActive').checked = config.is_active;
+
+    const editModal = new bootstrap.Modal(document.getElementById('editConfigModal'));
+    editModal.show();
+}
+
+// Update configuration
+async function updateConfiguration() {
+    const form = document.getElementById('editConfigForm');
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+    const clientIdentifier = data.client_identifier;
+
+    // Convert checkbox to boolean
+    data.is_active = document.getElementById('editIsActive').checked;
+
+    try {
+        await axios.put(`/api/slack/config/${clientIdentifier}/`, data);
+        showAlert('Configuration updated successfully!', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('editConfigModal')).hide();
+        await loadConfigurations();
+    } catch (error) {
+        handleApiError(error);
+    }
+}
+
+// Verify configuration
+async function verifyConfiguration(clientIdentifier) {
+    try {
+        showAlert('Verifying configuration...', 'info');
+        const response = await axios.post(`/api/slack/config/${clientIdentifier}/verify/`);
+
+        if (response.data.verified) {
+            showAlert('Configuration verified successfully!', 'success');
+        } else {
+            showAlert(`Verification failed: ${response.data.error}`, 'danger');
+        }
+
+        await loadConfigurations();
+    } catch (error) {
+        handleApiError(error);
+    }
+}
+
+// View OAuth URL
+async function viewOAuthUrl(clientIdentifier) {
+    try {
+        const response = await axios.get(`/api/slack/${clientIdentifier}/auth/initiate/`);
+        const authUrl = response.data.auth_url;
+
+        // Show OAuth URL in a modal or alert
+        const urlModal = `
+            <div class="modal fade" id="oauthUrlModal" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">OAuth URL for ${clientIdentifier}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label class="form-label">OAuth Authorization URL:</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" value="${authUrl}" readonly id="oauthUrl">
+                                    <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('oauthUrl')">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <a href="${authUrl}" target="_blank" class="btn btn-slack">
+                                <i class="fab fa-slack me-2"></i>Test OAuth Flow
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Remove existing modal if any
+        const existingModal = document.getElementById('oauthUrlModal');
+        if (existingModal) existingModal.remove();
+
+        // Add new modal
+        document.body.insertAdjacentHTML('beforeend', urlModal);
+        const modal = new bootstrap.Modal(document.getElementById('oauthUrlModal'));
+        modal.show();
+
+        // Clean up after modal is hidden
+        document.getElementById('oauthUrlModal').addEventListener('hidden.bs.modal', function() {
+            this.remove();
+        });
+
+    } catch (error) {
+        handleApiError(error);
+    }
+}
+
+// Delete configuration
+async function deleteConfiguration(clientIdentifier) {
+    if (!confirm(`Are you sure you want to delete the configuration for "${clientIdentifier}"?`)) {
+        return;
+    }
+
+    try {
+        await axios.delete(`/api/slack/config/${clientIdentifier}/`);
+        showAlert('Configuration deleted successfully!', 'success');
+        await loadConfigurations();
+    } catch (error) {
+        handleApiError(error);
+    }
+}
+
+// Copy to clipboard utility
+function copyToClipboard(elementId) {
+    const element = document.getElementById(elementId);
+    element.select();
+    document.execCommand('copy');
+    showAlert('Copied to clipboard!', 'success');
+}
+
+// Override the global showAlert to use our alert container
+function showAlert(message, type = 'info') {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+
+    const container = document.getElementById('alertContainer');
+    container.appendChild(alertDiv);
+
+    // Auto dismiss after 5 seconds
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+</script>
+{% endblock %}

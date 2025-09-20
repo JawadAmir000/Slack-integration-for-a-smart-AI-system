@@ -1,0 +1,1004 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - Slack Integration App{% endblock %}
+
+{% block content %}
+<!-- Header Section -->
+<div class="row mb-5">
+    <div class="col-12">
+        <div class="card border-0 shadow-lg" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <div class="card-body text-white p-5">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h1 class="display-4 fw-bold mb-2">
+                            <i class="fas fa-tachometer-alt me-3"></i>
+                            Dashboard
+                        </h1>
+                        <p class="lead mb-0 opacity-75">Manage your Slack integration with ease</p>
+                    </div>
+                    <div>
+                        <button id="refreshDataBtn" class="btn btn-light btn-lg shadow-sm">
+                            <i class="fas fa-sync-alt me-2"></i>
+                            Refresh Data
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Connected Workspaces -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-gradient text-white border-0" style="background: linear-gradient(135deg, #4A154B, #7B2D8E);">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-building me-2"></i>
+                    Connected Workspaces
+                </h5>
+            </div>
+            <div class="card-body bg-light">
+                <div id="workspacesContainer">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-3 text-muted">Loading workspaces...</p>
+                    </div>
+                </div>
+
+                {% if not connected_workspaces %}
+                <div class="alert alert-info border-0 shadow-sm mt-3" id="noWorkspacesAlert">
+                    <i class="fas fa-info-circle me-2"></i>
+                    No Slack workspaces connected. <a href="/" class="alert-link">Connect your first workspace</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row mb-4">
+    <div class="col-md-8 mx-auto">
+        <div class="card shadow-sm">
+            <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #4A154B, #7B2D8E);">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-paper-plane me-2"></i>
+                    Send Message
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="sendMessageForm">
+                    <div class="mb-3">
+                        <label for="messageChannel" class="form-label fw-bold">Channel</label>
+                        <select id="messageChannel" class="form-select form-select-lg" required>
+                            <option value="">Select a channel...</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="messageText" class="form-label fw-bold">Message</label>
+                        <textarea id="messageText" class="form-control" rows="4" placeholder="Type your message here..." required style="resize: vertical;"></textarea>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-slack btn-lg">
+                            <i class="fas fa-paper-plane me-2"></i>
+                            Send Message
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Message Reading -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-gradient text-white border-0" style="background: linear-gradient(135deg, #36C5F0, #2EB67D);">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-comments me-2"></i>
+                    Read Messages
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="card h-100 border-0 bg-light">
+                            <div class="card-body">
+                                <h6 class="card-title text-primary mb-3">
+                                    <i class="fas fa-comment me-2"></i>Read from Specific Channel
+                                </h6>
+                                <form id="readMessagesForm">
+                                    <div class="mb-3">
+                                        <label for="readChannel" class="form-label fw-bold">Channel</label>
+                                        <select id="readChannel" class="form-select form-select-lg" required>
+                                            <option value="">Select a channel...</option>
+                                        </select>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <label for="messageLimit" class="form-label fw-bold">Message Limit</label>
+                                            <input type="number" id="messageLimit" class="form-control form-control-lg" value="10" min="1" max="100">
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label fw-bold">&nbsp;</label>
+                                            <div class="form-check mt-2">
+                                                <input class="form-check-input" type="checkbox" id="includeMetadata">
+                                                <label class="form-check-label fw-bold" for="includeMetadata">
+                                                    Include metadata
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="d-grid mt-3">
+                                        <button type="submit" class="btn btn-primary btn-lg">
+                                            <i class="fas fa-download me-2"></i>
+                                            Read Messages
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="card h-100 border-0 bg-light">
+                            <div class="card-body">
+                                <h6 class="card-title text-success mb-3">
+                                    <i class="fas fa-comments me-2"></i>Read from All Channels
+                                </h6>
+                                <form id="readAllMessagesForm">
+                                    <div class="mb-3">
+                                        <label for="allChannelsLimit" class="form-label fw-bold">Messages per Channel</label>
+                                        <input type="number" id="allChannelsLimit" class="form-control form-control-lg" value="5" min="1" max="50">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="channelTypes" class="form-label fw-bold">Channel Types</label>
+                                        <select id="channelTypes" class="form-select form-select-lg">
+                                            <option value="public_channel,private_channel">All Channels</option>
+                                            <option value="public_channel">Public Channels Only</option>
+                                            <option value="private_channel">Private Channels Only</option>
+                                        </select>
+                                    </div>
+                                    <div class="d-grid mt-4">
+                                        <button type="submit" class="btn btn-success btn-lg">
+                                            <i class="fas fa-download me-2"></i>
+                                            Read All Messages
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Messages Display Area -->
+                <div class="mt-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="mb-0 text-primary">
+                            <i class="fas fa-envelope-open-text me-2"></i>Messages
+                        </h6>
+                        <button id="clearMessagesBtn" class="btn btn-sm btn-outline-danger rounded-pill" style="display: none;">
+                            <i class="fas fa-trash me-1"></i>Clear
+                        </button>
+                    </div>
+                    <div id="messagesContainer" class="border-0 rounded-3 p-4 shadow-sm" style="min-height: 250px; max-height: 600px; overflow-y: auto; background: linear-gradient(135deg, #f8f9fa, #ffffff);">
+                        <div class="text-muted text-center py-5">
+                            <i class="fas fa-info-circle me-2 fs-4"></i>
+                            <div class="mt-2">Select a channel and click "Read Messages" to view messages here</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Direct Messages -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-gradient text-white border-0" style="background: linear-gradient(135deg, #E01E5A, #ECB22E);">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-comment-dots me-2"></i>
+                    Direct Messages
+                </h5>
+            </div>
+            <div class="card-body">
+                <!-- DM Tabs -->
+                <ul class="nav nav-tabs mb-3" id="dmTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="send-dm-tab" data-bs-toggle="tab" data-bs-target="#send-dm" type="button" role="tab">
+                            <i class="fas fa-paper-plane me-2"></i>Send DM
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="read-dm-tab" data-bs-toggle="tab" data-bs-target="#read-dm" type="button" role="tab">
+                            <i class="fas fa-eye me-2"></i>Read DMs
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="dm-users-tab" data-bs-toggle="tab" data-bs-target="#dm-users" type="button" role="tab">
+                            <i class="fas fa-users me-2"></i>Users
+                        </button>
+                    </li>
+                </ul>
+
+                <!-- DM Tab Content -->
+                <div class="tab-content" id="dmTabContent">
+                    <!-- Send DM Tab -->
+                    <div class="tab-pane fade show active" id="send-dm" role="tabpanel">
+                        <form id="sendDMForm">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="dmUserSelect" class="form-label">Select User</label>
+                                        <select class="form-select" id="dmUserSelect" required>
+                                            <option value="">Choose a user...</option>
+                                        </select>
+                                        <div class="form-text">Or enter user ID manually below</div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="dmUserId" class="form-label">User ID (Alternative)</label>
+                                        <input type="text" class="form-control" id="dmUserId" placeholder="e.g., U1234567890">
+                                        <div class="form-text">Enter Slack user ID directly</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="dmMessage" class="form-label">Message</label>
+                                        <textarea class="form-control" id="dmMessage" rows="4" required placeholder="Type your direct message here..."></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="dmThreadTs" class="form-label">Thread Timestamp (Optional)</label>
+                                        <input type="text" class="form-control" id="dmThreadTs" placeholder="e.g., 1234567890.123456">
+                                        <div class="form-text">For replying to a thread</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane me-2"></i>Send Direct Message
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Read DM Tab -->
+                    <div class="tab-pane fade" id="read-dm" role="tabpanel">
+                        <div class="row">
+                            <!-- Single DM Reading -->
+                            <div class="col-md-6">
+                                <h6 class="mb-3">Read Single DM</h6>
+                                <form id="readSingleDMForm">
+                                    <div class="mb-3">
+                                        <label for="readDmUserSelect" class="form-label">Select User</label>
+                                        <select class="form-select" id="readDmUserSelect">
+                                            <option value="">Choose a user...</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="readDmUserId" class="form-label">Or User ID</label>
+                                        <input type="text" class="form-control" id="readDmUserId" placeholder="e.g., U1234567890">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="dmReadLimit" class="form-label">Message Limit</label>
+                                        <input type="number" class="form-control" id="dmReadLimit" value="20" min="1" max="1000">
+                                    </div>
+                                    <button type="submit" class="btn btn-outline-primary">
+                                        <i class="fas fa-download me-2"></i>Read DM
+                                    </button>
+                                </form>
+                            </div>
+
+                            <!-- All DMs Reading -->
+                            <div class="col-md-6">
+                                <h6 class="mb-3">Read All DMs</h6>
+                                <form id="readAllDMsForm">
+                                    <div class="mb-3">
+                                        <label for="dmReadAllLimit" class="form-label">Messages per DM</label>
+                                        <input type="number" class="form-control" id="dmReadAllLimit" value="10" min="1" max="100">
+                                    </div>
+                                    <div class="mb-3 form-check">
+                                        <input type="checkbox" class="form-check-input" id="includeMpim" checked>
+                                        <label class="form-check-label" for="includeMpim">
+                                            Include group DMs (MPIM)
+                                        </label>
+                                    </div>
+                                    <button type="submit" class="btn btn-outline-success">
+                                        <i class="fas fa-download me-2"></i>Read All DMs
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- DM Messages Display -->
+                        <div id="dmMessagesContainer" class="mt-4" style="display: none;">
+                            <h6>Direct Messages</h6>
+                            <div id="dmMessagesContent" class="border rounded p-3" style="max-height: 400px; overflow-y: auto;">
+                                <!-- DM messages will be displayed here -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- DM Users Tab -->
+                    <div class="tab-pane fade" id="dm-users" role="tabpanel">
+                        <div class="mb-3">
+                            <button id="loadUsersBtn" class="btn btn-outline-info">
+                                <i class="fas fa-users me-2"></i>Load Workspace Users
+                            </button>
+                        </div>
+                        <div id="usersContainer" style="max-height: 400px; overflow-y: auto;">
+                            <!-- Users will be displayed here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Load initial data
+    loadWorkspaces();
+    loadChannels();
+
+    // Event listeners
+    document.getElementById('refreshDataBtn').addEventListener('click', refreshAllData);
+    document.getElementById('sendMessageForm').addEventListener('submit', handleSendMessage);
+    document.getElementById('readMessagesForm').addEventListener('submit', handleReadMessages);
+    document.getElementById('readAllMessagesForm').addEventListener('submit', handleReadAllMessages);
+    document.getElementById('clearMessagesBtn').addEventListener('click', clearMessages);
+    
+    function refreshAllData() {
+        loadWorkspaces();
+        loadChannels();
+        showAlert('Data refreshed successfully', 'success');
+    }
+    
+    function loadWorkspaces() {
+        axios.get(`${API_BASE_URL}/slack/workspaces/`)
+            .then(response => {
+                displayWorkspaces(response.data.workspaces);
+            })
+            .catch(error => {
+                document.getElementById('workspacesContainer').innerHTML = 
+                    '<div class="alert alert-danger">Failed to load workspaces</div>';
+                handleApiError(error);
+            });
+    }
+    
+    function displayWorkspaces(workspaces) {
+        const container = document.getElementById('workspacesContainer');
+        
+        if (workspaces.length === 0) {
+            container.innerHTML = '<div class="alert alert-info">No connected workspaces found.</div>';
+            return;
+        }
+        
+        const workspaceCards = workspaces.map(workspace => `
+            <div class="col-md-6 mb-3">
+                <div class="card border-left-primary">
+                    <div class="card-body">
+                        <h6 class="card-title">
+                            <i class="fas fa-building me-2"></i>
+                            ${workspace.team_name}
+                        </h6>
+                        <p class="card-text small text-muted">
+                            <strong>ID:</strong> ${workspace.team_id}<br>
+                            <strong>Domain:</strong> ${workspace.team_domain || 'N/A'}<br>
+                            <strong>Connected:</strong> ${new Date(workspace.created_at).toLocaleDateString()}
+                        </p>
+                        ${workspace.team_url ? `<a href="${workspace.team_url}" target="_blank" class="btn btn-sm btn-outline-primary">Open Workspace</a>` : ''}
+                    </div>
+                </div>
+            </div>
+        `).join('');
+        
+        container.innerHTML = `<div class="row">${workspaceCards}</div>`;
+    }
+    
+    function loadChannels() {
+        axios.get(`${API_BASE_URL}/slack/channels/`)
+            .then(response => {
+                populateChannelSelects(response.data.channels);
+            })
+            .catch(error => {
+                console.error('Failed to load channels:', error);
+                handleApiError(error);
+            });
+    }
+    
+    
+    function populateChannelSelects(channels) {
+        const selects = ['messageChannel', 'readChannel'];
+
+        selects.forEach(selectId => {
+            const select = document.getElementById(selectId);
+            if (select) {
+                select.innerHTML = '<option value="">Select a channel...</option>';
+
+                channels.forEach(channel => {
+                    const option = document.createElement('option');
+                    option.value = channel.channel_id;
+                    option.textContent = `${channel.is_private ? '🔒' : '#'} ${channel.channel_name}`;
+                    select.appendChild(option);
+                });
+            }
+        });
+    }
+    
+    
+    function handleSendMessage(e) {
+        e.preventDefault();
+        
+        const channel = document.getElementById('messageChannel').value;
+        const text = document.getElementById('messageText').value;
+        
+        if (!channel || !text) {
+            showAlert('Please select a channel and enter a message', 'warning');
+            return;
+        }
+        
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Sending...';
+        
+        axios.post(`${API_BASE_URL}/slack/messages/send/`, {
+            channel: channel,
+            text: text
+        })
+        .then(response => {
+            showAlert('Message sent successfully!', 'success');
+            document.getElementById('messageText').value = '';
+        })
+        .catch(handleApiError)
+        .finally(() => {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Send Message';
+        });
+    }
+    
+
+    function handleReadMessages(e) {
+        e.preventDefault();
+
+        const channel = document.getElementById('readChannel').value;
+        const limit = document.getElementById('messageLimit').value || 10;
+        const includeMetadata = document.getElementById('includeMetadata').checked;
+
+        if (!channel) {
+            showAlert('Please select a channel', 'warning');
+            return;
+        }
+
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Reading...';
+
+        const params = new URLSearchParams({
+            channel: channel,
+            limit: limit,
+            include_all_metadata: includeMetadata
+        });
+
+        axios.get(`${API_BASE_URL}/slack/messages/read/?${params}`)
+            .then(response => {
+                displayMessages(response.data.data, 'single');
+                showAlert(`Retrieved ${response.data.data.messages.length} messages`, 'success');
+            })
+            .catch(handleApiError)
+            .finally(() => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-download me-2"></i>Read Messages';
+            });
+    }
+
+    function handleReadAllMessages(e) {
+        e.preventDefault();
+
+        const limitPerChannel = document.getElementById('allChannelsLimit').value || 5;
+        const channelTypes = document.getElementById('channelTypes').value;
+
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Reading...';
+
+        const params = new URLSearchParams({
+            limit_per_channel: limitPerChannel,
+            channel_types: channelTypes
+        });
+
+        axios.get(`${API_BASE_URL}/slack/messages/read/all/?${params}`)
+            .then(response => {
+                displayMessages(response.data.data, 'all');
+                const totalMessages = response.data.data.total_messages;
+                const successfulChannels = response.data.data.successful_channels.length;
+                showAlert(`Retrieved ${totalMessages} messages from ${successfulChannels} channels`, 'success');
+            })
+            .catch(handleApiError)
+            .finally(() => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-download me-2"></i>Read All Messages';
+            });
+    }
+
+    function displayMessages(data, type) {
+        const container = document.getElementById('messagesContainer');
+        const clearBtn = document.getElementById('clearMessagesBtn');
+
+        let messagesHtml = '';
+
+        if (type === 'single') {
+            // Single channel messages
+            const channelName = getChannelNameById(data.channel);
+            messagesHtml = `
+                <div class="mb-3">
+                    <h6 class="text-primary">
+                        <i class="fas fa-hashtag me-1"></i>${channelName || data.channel}
+                        <span class="badge bg-secondary ms-2">${data.messages.length} messages</span>
+                    </h6>
+                </div>
+            `;
+
+            data.messages.forEach(message => {
+                messagesHtml += formatMessage(message);
+            });
+
+        } else if (type === 'all') {
+            // Multiple channels messages
+            messagesHtml = `
+                <div class="mb-3">
+                    <h6 class="text-primary">Messages from All Channels</h6>
+                    <div class="row text-center mb-3">
+                        <div class="col-3">
+                            <small class="text-muted">Total Channels</small>
+                            <div class="fw-bold">${data.summary.total_channels_found}</div>
+                        </div>
+                        <div class="col-3">
+                            <small class="text-muted">Successful</small>
+                            <div class="fw-bold text-success">${data.summary.successful_channels}</div>
+                        </div>
+                        <div class="col-3">
+                            <small class="text-muted">Failed</small>
+                            <div class="fw-bold text-danger">${data.summary.failed_channels}</div>
+                        </div>
+                        <div class="col-3">
+                            <small class="text-muted">Total Messages</small>
+                            <div class="fw-bold">${data.summary.total_messages_retrieved}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Display messages by channel
+            Object.entries(data.channels).forEach(([channelId, channelData]) => {
+                const channelName = data.channels_metadata[channelId]?.name || channelId;
+                messagesHtml += `
+                    <div class="mb-4">
+                        <h6 class="text-secondary border-bottom pb-2">
+                            <i class="fas fa-hashtag me-1"></i>${channelName}
+                            <span class="badge bg-info ms-2">${channelData.messages.length} messages</span>
+                        </h6>
+                `;
+
+                channelData.messages.forEach(message => {
+                    messagesHtml += formatMessage(message);
+                });
+
+                messagesHtml += '</div>';
+            });
+
+            // Display failed channels
+            if (data.failed_channels.length > 0) {
+                messagesHtml += `
+                    <div class="mt-4">
+                        <h6 class="text-warning">
+                            <i class="fas fa-exclamation-triangle me-1"></i>Failed Channels
+                        </h6>
+                        <div class="alert alert-warning">
+                `;
+
+                data.failed_channels.forEach(failed => {
+                    const channelName = data.channels_metadata[failed.channel]?.name || failed.channel;
+                    messagesHtml += `<div><strong>${channelName}:</strong> ${failed.error}</div>`;
+                });
+
+                messagesHtml += '</div></div>';
+            }
+        }
+
+        container.innerHTML = messagesHtml;
+        clearBtn.style.display = 'block';
+    }
+
+    function formatMessage(message) {
+        const timestamp = new Date(parseFloat(message.ts) * 1000);
+        const timeStr = timestamp.toLocaleString();
+        const userName = message.bot_profile?.name || message.username || message.user || 'Unknown';
+        const isBot = message.bot_id ? true : false;
+
+        return `
+            <div class="message mb-3 p-3 border-start border-3 ${isBot ? 'border-info bg-light' : 'border-primary bg-white'} rounded">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div class="fw-bold ${isBot ? 'text-info' : 'text-primary'}">
+                        ${isBot ? '<i class="fas fa-robot me-1"></i>' : '<i class="fas fa-user me-1"></i>'}
+                        ${userName}
+                    </div>
+                    <small class="text-muted">${timeStr}</small>
+                </div>
+                <div class="message-text">${escapeHtml(message.text || '')}</div>
+                ${message.edited ? '<small class="text-muted"><i class="fas fa-edit me-1"></i>Edited</small>' : ''}
+                ${message.thread_ts ? '<small class="text-muted"><i class="fas fa-reply me-1"></i>Thread Reply</small>' : ''}
+            </div>
+        `;
+    }
+
+    function getChannelNameById(channelId) {
+        const readChannelSelect = document.getElementById('readChannel');
+        const option = readChannelSelect.querySelector(`option[value="${channelId}"]`);
+        return option ? option.textContent.replace(/^[🔒#]\s*/, '') : null;
+    }
+
+    function clearMessages() {
+        const container = document.getElementById('messagesContainer');
+        const clearBtn = document.getElementById('clearMessagesBtn');
+
+        container.innerHTML = `
+            <div class="text-muted text-center">
+                <i class="fas fa-info-circle me-2"></i>
+                Select a channel and click "Read Messages" to view messages here
+            </div>
+        `;
+        clearBtn.style.display = 'none';
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+
+    // Direct Message Functions
+
+    // Load workspace users for DM functionality
+    function loadWorkspaceUsers() {
+        return axios.get(`${API_BASE_URL}/slack/dm/users/`)
+            .then(response => {
+                const users = response.data.users;
+                populateUserSelects(users);
+                displayUsers(users);
+                return users;
+            })
+            .catch(error => {
+                console.error('Error loading users:', error);
+                throw error;
+            });
+    }
+
+    function populateUserSelects(users) {
+        const dmUserSelect = document.getElementById('dmUserSelect');
+        const readDmUserSelect = document.getElementById('readDmUserSelect');
+
+        // Clear existing options (except the first one)
+        dmUserSelect.innerHTML = '<option value="">Choose a user...</option>';
+        readDmUserSelect.innerHTML = '<option value="">Choose a user...</option>';
+
+        users.forEach(user => {
+            const option1 = new Option(`${user.real_name || user.name} (@${user.name})`, user.id);
+            const option2 = new Option(`${user.real_name || user.name} (@${user.name})`, user.id);
+            dmUserSelect.appendChild(option1);
+            readDmUserSelect.appendChild(option2);
+        });
+    }
+
+    function displayUsers(users) {
+        const container = document.getElementById('usersContainer');
+
+        if (users.length === 0) {
+            container.innerHTML = '<div class="text-muted">No users found</div>';
+            return;
+        }
+
+        let usersHtml = '<div class="row">';
+        users.forEach(user => {
+            usersHtml += `
+                <div class="col-md-6 mb-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                ${user.image ? `<img src="${user.image}" alt="${user.name}" class="rounded-circle me-3" width="40" height="40">` : '<div class="bg-secondary rounded-circle me-3" style="width:40px;height:40px;"></div>'}
+                                <div class="flex-grow-1">
+                                    <h6 class="card-title mb-1">${user.real_name || user.name}</h6>
+                                    <small class="text-muted">@${user.name}</small>
+                                    ${user.is_admin ? '<span class="badge bg-warning ms-2">Admin</span>' : ''}
+                                    ${user.is_owner ? '<span class="badge bg-danger ms-2">Owner</span>' : ''}
+                                </div>
+                                <button class="btn btn-sm btn-outline-primary" onclick="selectUserForDM('${user.id}', '${user.name}')">
+                                    <i class="fas fa-comment"></i>
+                                </button>
+                            </div>
+                            <div class="mt-2">
+                                <small class="text-muted">ID: ${user.id}</small>
+                                ${user.email ? `<br><small class="text-muted">${user.email}</small>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        usersHtml += '</div>';
+
+        container.innerHTML = usersHtml;
+    }
+
+    function selectUserForDM(userId, userName) {
+        // Switch to Send DM tab and populate user
+        const sendDmTab = document.getElementById('send-dm-tab');
+        const dmUserSelect = document.getElementById('dmUserSelect');
+
+        sendDmTab.click();
+        dmUserSelect.value = userId;
+
+        showAlert(`Selected ${userName} for DM`, 'info');
+    }
+
+    // Send DM function
+    function handleSendDM(e) {
+        e.preventDefault();
+
+        const dmUserSelect = document.getElementById('dmUserSelect');
+        const dmUserId = document.getElementById('dmUserId');
+        const dmMessage = document.getElementById('dmMessage');
+        const dmThreadTs = document.getElementById('dmThreadTs');
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+
+        // Get user ID from select or input
+        const userId = dmUserSelect.value || dmUserId.value;
+
+        if (!userId) {
+            showAlert('Please select a user or enter a user ID', 'warning');
+            return;
+        }
+
+        if (!dmMessage.value.trim()) {
+            showAlert('Please enter a message', 'warning');
+            return;
+        }
+
+        // Show loading state
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Sending...';
+        submitBtn.disabled = true;
+
+        const data = {
+            user_id: userId,
+            text: dmMessage.value.trim()
+        };
+
+        if (dmThreadTs.value.trim()) {
+            data.thread_ts = dmThreadTs.value.trim();
+        }
+
+        axios.post(`${API_BASE_URL}/slack/dm/send/`, data)
+            .then(response => {
+                showAlert('Direct message sent successfully!', 'success');
+                dmMessage.value = '';
+                dmThreadTs.value = '';
+                if (!dmUserSelect.value) {
+                    dmUserId.value = '';
+                }
+            })
+            .catch(handleApiError)
+            .finally(() => {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            });
+    }
+
+    // Read single DM function
+    function handleReadSingleDM(e) {
+        e.preventDefault();
+
+        const readDmUserSelect = document.getElementById('readDmUserSelect');
+        const readDmUserId = document.getElementById('readDmUserId');
+        const dmReadLimit = document.getElementById('dmReadLimit');
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+
+        // Get user ID from select or input
+        const userId = readDmUserSelect.value || readDmUserId.value;
+
+        if (!userId) {
+            showAlert('Please select a user or enter a user ID', 'warning');
+            return;
+        }
+
+        // Show loading state
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Reading...';
+        submitBtn.disabled = true;
+
+        const params = new URLSearchParams({
+            user_id: userId,
+            limit: dmReadLimit.value || 20
+        });
+
+        axios.get(`${API_BASE_URL}/slack/dm/read/?${params}`)
+            .then(response => {
+                displayDMMessages(response.data, 'single');
+            })
+            .catch(handleApiError)
+            .finally(() => {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            });
+    }
+
+    // Read all DMs function
+    function handleReadAllDMs(e) {
+        e.preventDefault();
+
+        const dmReadAllLimit = document.getElementById('dmReadAllLimit');
+        const includeMpim = document.getElementById('includeMpim');
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+
+        // Show loading state
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Reading...';
+        submitBtn.disabled = true;
+
+        const params = new URLSearchParams({
+            limit_per_dm: dmReadAllLimit.value || 10,
+            include_mpim: includeMpim.checked
+        });
+
+        axios.get(`${API_BASE_URL}/slack/dm/read/all/?${params}`)
+            .then(response => {
+                displayDMMessages(response.data, 'all');
+            })
+            .catch(handleApiError)
+            .finally(() => {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            });
+    }
+
+    function displayDMMessages(data, type) {
+        const container = document.getElementById('dmMessagesContainer');
+        const content = document.getElementById('dmMessagesContent');
+
+        container.style.display = 'block';
+
+        let messagesHtml = '';
+
+        if (type === 'single') {
+            // Single DM conversation
+            messagesHtml += `<h6 class="mb-3">DM Conversation (${data.messages?.length || 0} messages)</h6>`;
+
+            if (data.messages && data.messages.length > 0) {
+                data.messages.forEach(message => {
+                    messagesHtml += formatDMMessage(message);
+                });
+            } else {
+                messagesHtml += '<div class="text-muted">No messages found in this conversation</div>';
+            }
+        } else {
+            // All DM conversations
+            messagesHtml += `<h6 class="mb-3">All DM Conversations (${data.total_messages || 0} messages)</h6>`;
+
+            if (data.conversations && Object.keys(data.conversations).length > 0) {
+                Object.entries(data.conversations).forEach(([channelId, convData]) => {
+                    const convInfo = convData.conversation_info || {};
+                    const messages = convData.messages || [];
+
+                    messagesHtml += `
+                        <div class="mb-4 border-bottom pb-3">
+                            <h6 class="text-primary">
+                                <i class="fas fa-comment-dots me-2"></i>
+                                ${convInfo.type === 'mpim' ? 'Group DM' : 'Direct Message'}
+                                <small class="text-muted">(${messages.length} messages)</small>
+                            </h6>
+                    `;
+
+                    if (messages.length > 0) {
+                        messages.forEach(message => {
+                            messagesHtml += formatDMMessage(message);
+                        });
+                    } else {
+                        messagesHtml += '<div class="text-muted">No messages in this conversation</div>';
+                    }
+
+                    messagesHtml += '</div>';
+                });
+            } else {
+                messagesHtml += '<div class="text-muted">No DM conversations found</div>';
+            }
+
+            // Show summary
+            if (data.failed_conversations && data.failed_conversations.length > 0) {
+                messagesHtml += `
+                    <div class="mt-3">
+                        <h6 class="text-warning">
+                            <i class="fas fa-exclamation-triangle me-1"></i>Failed Conversations
+                        </h6>
+                        <div class="alert alert-warning">
+                `;
+                data.failed_conversations.forEach(failed => {
+                    messagesHtml += `<div><strong>${failed.conversation}:</strong> ${failed.error}</div>`;
+                });
+                messagesHtml += '</div></div>';
+            }
+        }
+
+        content.innerHTML = messagesHtml;
+    }
+
+    function formatDMMessage(message) {
+        const timestamp = new Date(parseFloat(message.ts) * 1000).toLocaleString();
+        const isBot = message.bot_id || message.subtype === 'bot_message';
+        const user = message.username || message.user || 'Unknown';
+
+        return `
+            <div class="message-item mb-3 p-2 border-start border-2 ${isBot ? 'border-info' : 'border-primary'} bg-light">
+                <div class="d-flex justify-content-between align-items-start">
+                    <strong class="${isBot ? 'text-info' : 'text-primary'}">
+                        ${isBot ? '🤖 ' : ''}${user}
+                    </strong>
+                    <small class="text-muted">${timestamp}</small>
+                </div>
+                <div class="mt-1">${message.text || '<em>No text content</em>'}</div>
+                ${message.thread_ts ? '<small class="text-muted"><i class="fas fa-reply me-1"></i>Thread reply</small>' : ''}
+                ${message.edited ? '<small class="text-muted ms-2"><i class="fas fa-edit me-1"></i>Edited</small>' : ''}
+                ${message.reactions ? `<div class="mt-1">${message.reactions.map(r => `<span class="badge bg-light text-dark me-1">:${r.name}: ${r.count}</span>`).join('')}</div>` : ''}
+            </div>
+        `;
+    }
+
+    // Event listeners for DM functionality
+    document.getElementById('sendDMForm').addEventListener('submit', handleSendDM);
+    document.getElementById('readSingleDMForm').addEventListener('submit', handleReadSingleDM);
+    document.getElementById('readAllDMsForm').addEventListener('submit', handleReadAllDMs);
+
+    document.getElementById('loadUsersBtn').addEventListener('click', function() {
+        const btn = this;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Loading...';
+        btn.disabled = true;
+
+        loadWorkspaceUsers()
+            .then(() => {
+                showAlert('Workspace users loaded successfully!', 'success');
+            })
+            .catch(handleApiError)
+            .finally(() => {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            });
+    });
+
+    // Auto-load users when DM tab is first shown
+    document.getElementById('dm-users-tab').addEventListener('shown.bs.tab', function(e) {
+        const container = document.getElementById('usersContainer');
+        if (container.innerHTML.trim() === '') {
+            loadWorkspaceUsers().catch(handleApiError);
+        }
+    });
+
+    // Auto-load users for dropdowns when Send DM tab is first shown
+    document.getElementById('send-dm-tab').addEventListener('shown.bs.tab', function(e) {
+        const dmUserSelect = document.getElementById('dmUserSelect');
+        if (dmUserSelect.options.length <= 1) {
+            loadWorkspaceUsers().catch(handleApiError);
+        }
+    });
+});
+</script>
+{% endblock %}

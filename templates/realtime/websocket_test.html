@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Slack Real-Time Message Test</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .status.connected {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.connecting {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        .message-log {
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            background: #f9f9f9;
+            font-family: monospace;
+            margin: 10px 0;
+        }
+        .message {
+            margin: 5px 0;
+            padding: 8px;
+            border-radius: 4px;
+            background: white;
+            border-left: 4px solid #007bff;
+        }
+        .message.slack_message {
+            border-left-color: #28a745;
+        }
+        .message.slack_dm {
+            border-left-color: #dc3545;
+        }
+        .message.notification {
+            border-left-color: #ffc107;
+        }
+        .message.system {
+            border-left-color: #6c757d;
+            background: #e9ecef;
+        }
+        .controls {
+            margin: 20px 0;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        input[type="text"] {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Slack Real-Time Message Test Client</h1>
+
+        <div id="status" class="status disconnected">
+            ❌ Disconnected
+        </div>
+
+        <div class="controls">
+            <button id="connectBtn" onclick="connect()">Connect to Messages</button>
+            <button id="disconnectBtn" onclick="disconnect()" disabled>Disconnect</button>
+            <button onclick="clearLog()">Clear Log</button>
+            <button onclick="sendPing()">Send Ping</button>
+        </div>
+
+        <div class="controls">
+            <h3>Subscribe to Workspace/Channel:</h3>
+            <div class="input-group">
+                <input type="text" id="workspaceId" placeholder="Workspace ID (optional)">
+                <input type="text" id="channelId" placeholder="Channel ID (optional)">
+                <button onclick="subscribe()">Subscribe</button>
+            </div>
+        </div>
+
+        <div class="message-log" id="messageLog">
+            <div class="message system">
+                <strong>System:</strong> Ready to connect. Click "Connect to Messages" to start receiving real-time Slack messages.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let socket = null;
+        let messageCount = 0;
+
+        function addMessage(type, data, timestamp = null) {
+            const log = document.getElementById('messageLog');
+            const message = document.createElement('div');
+            message.className = `message ${type}`;
+
+            const time = timestamp || new Date().toLocaleTimeString();
+            const count = ++messageCount;
+
+            let content = `<strong>[${count}] ${time}</strong><br>`;
+
+            if (typeof data === 'string') {
+                content += data;
+            } else {
+                content += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            }
+
+            message.innerHTML = content;
+            log.appendChild(message);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function updateStatus(status, message) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = `status ${status}`;
+            statusDiv.innerHTML = message;
+        }
+
+        function connect() {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                addMessage('system', 'Already connected');
+                return;
+            }
+
+            updateStatus('connecting', '🔄 Connecting...');
+            addMessage('system', 'Attempting to connect to WebSocket...');
+
+            // Use appropriate WebSocket URL
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws/slack/messages/`;
+
+            socket = new WebSocket(wsUrl);
+
+            socket.onopen = function(event) {
+                updateStatus('connected', '✅ Connected');
+                addMessage('system', 'WebSocket connection established');
+                document.getElementById('connectBtn').disabled = true;
+                document.getElementById('disconnectBtn').disabled = false;
+            };
+
+            socket.onmessage = function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    const msgType = data.type || 'unknown';
+
+                    if (msgType === 'connection_established') {
+                        addMessage('system', `Connection confirmed for user: ${data.user_id}`);
+                    } else if (msgType === 'pong') {
+                        addMessage('system', 'Pong received - connection is alive');
+                    } else if (msgType === 'slack_channel_message') {
+                        addMessage('slack_message', {
+                            channel: data.message.channel_name || data.message.channel_id,
+                            text: data.message.text,
+                            user: data.message.user_id,
+                            timestamp: data.message.timestamp,
+                            workspace: data.message.workspace_name
+                        });
+                    } else if (msgType === 'slack_dm') {
+                        addMessage('slack_dm', {
+                            text: data.message.text,
+                            user: data.message.user_id,
+                            timestamp: data.message.timestamp,
+                            workspace: data.message.workspace_name
+                        });
+                    } else if (msgType === 'subscription_confirmed') {
+                        addMessage('system', `Subscribed: ${data.message}`);
+                    } else {
+                        addMessage('notification', data);
+                    }
+
+                } catch (error) {
+                    addMessage('system', `Error parsing message: ${error.message}`);
+                    addMessage('system', `Raw data: ${event.data}`);
+                }
+            };
+
+            socket.onerror = function(error) {
+                addMessage('system', `WebSocket error: ${error}`);
+                updateStatus('disconnected', '❌ Connection Error');
+            };
+
+            socket.onclose = function(event) {
+                addMessage('system', `WebSocket closed: ${event.code} - ${event.reason}`);
+                updateStatus('disconnected', '❌ Disconnected');
+                document.getElementById('connectBtn').disabled = false;
+                document.getElementById('disconnectBtn').disabled = true;
+            };
+        }
+
+        function disconnect() {
+            if (socket) {
+                socket.close();
+                socket = null;
+                addMessage('system', 'Disconnected by user');
+            }
+        }
+
+        function sendPing() {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'ping',
+                    timestamp: new Date().toISOString()
+                }));
+                addMessage('system', 'Ping sent');
+            } else {
+                addMessage('system', 'Not connected - cannot send ping');
+            }
+        }
+
+        function subscribe() {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                const workspaceId = document.getElementById('workspaceId').value.trim();
+                const channelId = document.getElementById('channelId').value.trim();
+
+                if (!workspaceId && !channelId) {
+                    addMessage('system', 'Please enter at least one ID to subscribe');
+                    return;
+                }
+
+                const subscribeData = {
+                    type: 'subscribe'
+                };
+
+                if (workspaceId) {
+                    subscribeData.workspace_id = workspaceId;
+                }
+
+                if (channelId) {
+                    subscribeData.channel_id = channelId;
+                }
+
+                socket.send(JSON.stringify(subscribeData));
+                addMessage('system', `Subscription request sent: ${JSON.stringify(subscribeData, null, 2)}`);
+            } else {
+                addMessage('system', 'Not connected - cannot subscribe');
+            }
+        }
+
+        function clearLog() {
+            document.getElementById('messageLog').innerHTML = '';
+            messageCount = 0;
+        }
+
+        // Auto-connect on page load
+        window.addEventListener('load', function() {
+            addMessage('system', 'Page loaded. Ready to connect to Slack real-time messages.');
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,203 @@
+{% extends 'base.html' %}
+
+{% block title %}Home - Slack Integration App{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <!-- Hero Section -->
+        <div class="text-center mb-5">
+            <i class="fab fa-slack slack-logo" style="font-size: 4rem;"></i>
+            <h1 class="display-4 mt-3">Slack Integration App</h1>
+            <p class="lead">Connect your Slack workspace and interact with channels, messages, and more!</p>
+        </div>
+        
+        <!-- Features Section -->
+        <div class="row mb-5">
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-comments text-primary" style="font-size: 2rem;"></i>
+                        <h5 class="card-title mt-3">Send Messages</h5>
+                        <p class="card-text">Send messages to any channel or direct message with rich formatting support.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-upload text-success" style="font-size: 2rem;"></i>
+                        <h5 class="card-title mt-3">File Upload</h5>
+                        <p class="card-text">Upload files and documents to your Slack channels seamlessly.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-hashtag text-info" style="font-size: 2rem;"></i>
+                        <h5 class="card-title mt-3">Manage Channels</h5>
+                        <p class="card-text">Create, join, and manage channels across your Slack workspace.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Getting Started Section -->
+        <div class="card">
+            <div class="card-header card-header-slack">
+                <h3 class="card-title mb-0">
+                    <i class="fas fa-rocket me-2"></i>
+                    Getting Started
+                </h3>
+            </div>
+            <div class="card-body">
+                {% if user.is_authenticated %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Welcome back, {{ user.username }}! Ready to connect your Slack workspace?
+                    </div>
+                    
+                    <div class="text-center">
+                        <button id="connectSlackBtn" class="btn btn-slack btn-lg">
+                            <i class="fab fa-slack me-2"></i>
+                            Connect to Slack
+                        </button>
+                        <p class="text-muted mt-3">
+                            Click above to start the OAuth flow and connect your Slack workspace
+                        </p>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <h5>What you can do after connecting:</h5>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-check text-success me-2"></i> View all your channels</li>
+                            <li><i class="fas fa-check text-success me-2"></i> Send messages to channels</li>
+                            <li><i class="fas fa-check text-success me-2"></i> Upload files to channels</li>
+                            <li><i class="fas fa-check text-success me-2"></i> Create new channels</li>
+                            <li><i class="fas fa-check text-success me-2"></i> Add reactions to messages</li>
+                            <li><i class="fas fa-check text-success me-2"></i> Get user information</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="text-center mt-4">
+                        <a href="/dashboard/" class="btn btn-outline-primary">
+                            <i class="fas fa-tachometer-alt me-2"></i>
+                            Go to Dashboard
+                        </a>
+                    </div>
+                {% else %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Please login to connect your Slack workspace.
+                    </div>
+                    
+                    <div class="text-center">
+                        <a href="/admin/login/" class="btn btn-primary btn-lg">
+                            <i class="fas fa-sign-in-alt me-2"></i>
+                            Login to Get Started
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- API Documentation Section -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-code me-2"></i>
+                    Available API Endpoints
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Authentication</h6>
+                        <ul class="list-unstyled small">
+                            <li><code>GET /api/slack/auth/initiate/</code> - Start OAuth</li>
+                            <li><code>POST /api/slack/auth/callback/</code> - Handle OAuth</li>
+                        </ul>
+                        
+                        <h6>Messages</h6>
+                        <ul class="list-unstyled small">
+                            <li><code>POST /api/slack/messages/send/</code> - Send message</li>
+                            <li><code>POST /api/slack/messages/reaction/</code> - Add reaction</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Channels</h6>
+                        <ul class="list-unstyled small">
+                            <li><code>GET /api/slack/channels/</code> - List channels</li>
+                            <li><code>POST /api/slack/channels/</code> - Create channel</li>
+                            <li><code>POST /api/slack/channels/join/</code> - Join channel</li>
+                        </ul>
+                        
+                        <h6>Files & User</h6>
+                        <ul class="list-unstyled small">
+                            <li><code>POST /api/slack/files/upload/</code> - Upload file</li>
+                            <li><code>GET /api/slack/user/info/</code> - Get user info</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const connectBtn = document.getElementById('connectSlackBtn');
+    
+    if (connectBtn) {
+        connectBtn.addEventListener('click', function() {
+            connectBtn.disabled = true;
+            connectBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Connecting...';
+            
+            // Get OAuth URL using automatic configuration detection
+            axios.get(`${API_BASE_URL}/slack/auth/auto/`)
+                .then(response => {
+                    const authUrl = response.data.auth_url;
+                    const clientIdentifier = response.data.client_identifier;
+                    const clientName = response.data.client_name;
+
+                    // Store client identifier for callback handling
+                    if (clientIdentifier) {
+                        sessionStorage.setItem('slack_client_identifier', clientIdentifier);
+                        console.log(`Using Slack app configuration: ${clientName} (${clientIdentifier})`);
+                    }
+
+                    // Open OAuth URL in new window
+                    const oauthWindow = window.open(
+                        authUrl,
+                        'slackOAuth',
+                        'width=600,height=600,scrollbars=yes,resizable=yes'
+                    );
+
+                    // Monitor OAuth window
+                    const checkClosed = setInterval(function() {
+                        if (oauthWindow.closed) {
+                            clearInterval(checkClosed);
+                            connectBtn.disabled = false;
+                            connectBtn.innerHTML = '<i class="fab fa-slack me-2"></i>Connect to Slack';
+
+                            // Check if connection was successful by redirecting to dashboard
+                            const message = clientName ?
+                                `OAuth flow completed for ${clientName}` :
+                                'Please complete the OAuth flow in the popup window';
+                            showAlert(message, 'info');
+                        }
+                    }, 1000);
+                })
+                .catch(error => {
+                    handleApiError(error);
+                    connectBtn.disabled = false;
+                    connectBtn.innerHTML = '<i class="fab fa-slack me-2"></i>Connect to Slack';
+                });
+        });
+    }
+});
+</script>
+{% endblock %}
