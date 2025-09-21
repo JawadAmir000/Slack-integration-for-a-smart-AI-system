@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Test - Port 8001</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .connected { background: #d4edda; color: #155724; }
+        .disconnected { background: #f8d7da; color: #721c24; }
+        .connecting { background: #fff3cd; color: #856404; }
+        .messages {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        .message {
+            margin: 5px 0;
+            padding: 5px;
+            background: #f8f9fa;
+            border-left: 3px solid #007bff;
+        }
+        button {
+            padding: 10px 15px;
+            margin: 5px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #6c757d; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <h1>WebSocket Test - Port 8001 (Daphne)</h1>
+    <div id="status" class="status disconnected">Status: Disconnected</div>
+
+    <div>
+        <button onclick="connectWebSocket()">Connect</button>
+        <button onclick="disconnectWebSocket()">Disconnect</button>
+        <button onclick="testConnection()">Test Connection</button>
+        <button onclick="clearMessages()">Clear Messages</button>
+    </div>
+
+    <h3>Messages</h3>
+    <div id="messages" class="messages">
+        <div class="message">Ready to connect to WebSocket...</div>
+    </div>
+
+    <script>
+        let messageSocket = null;
+        let notificationSocket = null;
+
+        function updateStatus(status, message) {
+            const statusEl = document.getElementById('status');
+            statusEl.className = `status ${status}`;
+            statusEl.textContent = `Status: ${message}`;
+        }
+
+        function addMessage(content, type = 'info') {
+            const messagesEl = document.getElementById('messages');
+            const messageEl = document.createElement('div');
+            messageEl.className = 'message';
+
+            const timestamp = new Date().toLocaleTimeString();
+            messageEl.innerHTML = `[${timestamp}] ${content}`;
+
+            messagesEl.appendChild(messageEl);
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+        }
+
+        function connectWebSocket() {
+            updateStatus('connecting', 'Connecting...');
+
+            // Connect to message WebSocket
+            try {
+                messageSocket = new WebSocket('ws://localhost:8001/ws/slack/messages/');
+
+                messageSocket.onopen = function(event) {
+                    addMessage('✅ Message WebSocket connected successfully!', 'success');
+                    updateStatus('connected', 'Connected');
+                };
+
+                messageSocket.onmessage = function(event) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        addMessage(`📧 Message received: ${JSON.stringify(data, null, 2)}`, 'message');
+                    } catch (e) {
+                        addMessage(`📧 Raw message: ${event.data}`, 'message');
+                    }
+                };
+
+                messageSocket.onclose = function(event) {
+                    addMessage(`❌ Message WebSocket closed (code: ${event.code})`, 'error');
+                    updateStatus('disconnected', 'Disconnected');
+                };
+
+                messageSocket.onerror = function(error) {
+                    addMessage(`❌ Message WebSocket error: ${error}`, 'error');
+                    updateStatus('disconnected', 'Error');
+                };
+
+            } catch (error) {
+                addMessage(`❌ Failed to create WebSocket: ${error}`, 'error');
+                updateStatus('disconnected', 'Error');
+            }
+
+            // Connect to notification WebSocket
+            try {
+                notificationSocket = new WebSocket('ws://localhost:8001/ws/slack/notifications/');
+
+                notificationSocket.onopen = function(event) {
+                    addMessage('🔔 Notification WebSocket connected successfully!', 'success');
+                };
+
+                notificationSocket.onmessage = function(event) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        addMessage(`🔔 Notification: ${JSON.stringify(data, null, 2)}`, 'notification');
+                    } catch (e) {
+                        addMessage(`🔔 Raw notification: ${event.data}`, 'notification');
+                    }
+                };
+
+                notificationSocket.onclose = function(event) {
+                    addMessage(`❌ Notification WebSocket closed (code: ${event.code})`, 'error');
+                };
+
+                notificationSocket.onerror = function(error) {
+                    addMessage(`❌ Notification WebSocket error: ${error}`, 'error');
+                };
+
+            } catch (error) {
+                addMessage(`❌ Failed to create notification WebSocket: ${error}`, 'error');
+            }
+        }
+
+        function disconnectWebSocket() {
+            if (messageSocket) {
+                messageSocket.close();
+                messageSocket = null;
+            }
+            if (notificationSocket) {
+                notificationSocket.close();
+                notificationSocket = null;
+            }
+            updateStatus('disconnected', 'Disconnected');
+            addMessage('🔌 WebSockets disconnected', 'info');
+        }
+
+        function testConnection() {
+            if (messageSocket && messageSocket.readyState === WebSocket.OPEN) {
+                const testMessage = {
+                    type: 'ping',
+                    timestamp: new Date().toISOString()
+                };
+                messageSocket.send(JSON.stringify(testMessage));
+                addMessage('⚡ Test ping sent', 'info');
+            } else {
+                addMessage('❌ WebSocket not connected', 'error');
+            }
+        }
+
+        function clearMessages() {
+            document.getElementById('messages').innerHTML = '<div class="message">Messages cleared...</div>';
+        }
+
+        // Auto-connect on page load
+        window.addEventListener('load', function() {
+            addMessage('🚀 WebSocket test page loaded. Click Connect to start.', 'info');
+        });
+    </script>
+</body>
+</html>

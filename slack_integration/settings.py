@@ -198,9 +198,7 @@ CORS_ALLOW_CREDENTIALS = True
 
 # CSRF Settings
 CSRF_TRUSTED_ORIGINS = [
-    'https://831d1c9e8075.ngrok-free.app',  # Old ngrok URL
-    'https://46550c9cd1eb.ngrok-free.app',  # Old ngrok URL
-    'https://21324abb9c81.ngrok-free.app',  # Current ngrok URL
+    'https://cd31db931d79.ngrok-free.app',  # Old ngrok URL
     'http://localhost:8000',
     'http://127.0.0.1:8000',
 ]

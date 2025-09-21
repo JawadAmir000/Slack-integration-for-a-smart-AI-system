@@ -84,7 +84,7 @@ class SlackOAuthService:
             'client_id': '9521493598272.9538323153873',
             'client_secret': 'be6326e2e135ad14020a8a7d126447ae',
             'signing_secret': 'your-signing-secret',  # Not needed for OAuth exchange
-            'redirect_uri': 'https://46550c9cd1eb.ngrok-free.app/api/slack/auth/callback',
+            'redirect_uri': 'https://cd31db931d79.ngrok-free.app/api/slack/auth/callback',
             'scopes': 'channels:read,groups:read,im:read,mpim:read,chat:write,files:write,users:read,im:write,mpim:write,users:read.email,channels:history,groups:history,im:history,mpim:history,channels:join,groups:write',
             'user_scopes': 'channels:read,groups:read,im:read,mpim:read,im:history,mpim:history,groups:history,users:read'
         }

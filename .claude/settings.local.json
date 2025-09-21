@@ -3,7 +3,9 @@
     "allow": [
       "WebSearch",
       "Bash(python manage.py:*)",
-      "Bash(docker run:*)"
+      "Bash(docker run:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)"
     ],
     "deny": [],
     "ask": []

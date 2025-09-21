@@ -123,14 +123,15 @@ class SlackMessageConsumer(AsyncWebsocketConsumer):
         except Exception as e:
             logger.error(f"Subscription handling error: {str(e)}")
 
-    # Group message handlers (called by channel layer)
+    # Enhanced group message handlers (called by channel layer)
 
     async def slack_message(self, event):
-        """Send Slack message to WebSocket"""
+        """Send Slack message to WebSocket with enhanced data"""
         await self.send(text_data=json.dumps({
             'type': 'slack_message',
             'message': event['message'],
-            'timestamp': self.get_timestamp()
+            'timestamp': self.get_timestamp(),
+            'delivery_time': self.get_timestamp()
         }))
 
     async def slack_dm(self, event):
@@ -138,7 +139,8 @@ class SlackMessageConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps({
             'type': 'slack_dm',
             'message': event['message'],
-            'timestamp': self.get_timestamp()
+            'timestamp': self.get_timestamp(),
+            'delivery_time': self.get_timestamp()
         }))
 
     async def slack_channel_message(self, event):
@@ -146,7 +148,8 @@ class SlackMessageConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps({
             'type': 'slack_channel_message',
             'message': event['message'],
-            'timestamp': self.get_timestamp()
+            'timestamp': self.get_timestamp(),
+            'delivery_time': self.get_timestamp()
         }))
 
     async def message_broadcast(self, event):
@@ -154,6 +157,39 @@ class SlackMessageConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps({
             'type': 'broadcast',
             'message': event['message'],
+            'timestamp': self.get_timestamp(),
+            'delivery_time': self.get_timestamp()
+        }))
+
+    async def typing_indicator(self, event):
+        """Handle typing indicator events"""
+        await self.send(text_data=json.dumps({
+            'type': 'typing_indicator',
+            'data': event['data'],
+            'timestamp': self.get_timestamp()
+        }))
+
+    async def slack_reaction(self, event):
+        """Handle reaction events (added/removed)"""
+        await self.send(text_data=json.dumps({
+            'type': 'slack_reaction',
+            'reaction': event.get('reaction', {}),
+            'timestamp': self.get_timestamp()
+        }))
+
+    async def slack_presence(self, event):
+        """Handle user presence updates"""
+        await self.send(text_data=json.dumps({
+            'type': 'slack_presence',
+            'presence': event.get('presence', {}),
+            'timestamp': self.get_timestamp()
+        }))
+
+    async def slack_file_shared(self, event):
+        """Handle file sharing events"""
+        await self.send(text_data=json.dumps({
+            'type': 'slack_file_shared',
+            'file': event.get('file', {}),
             'timestamp': self.get_timestamp()
         }))
 
@@ -242,11 +278,12 @@ class SlackNotificationConsumer(AsyncWebsocketConsumer):
         }))
 
     async def slack_notification(self, event):
-        """Send notification to WebSocket"""
+        """Send enhanced notification to WebSocket"""
         await self.send(text_data=json.dumps({
             'type': 'notification',
             'notification': event['notification'],
-            'timestamp': SlackMessageConsumer.get_timestamp()
+            'timestamp': SlackMessageConsumer.get_timestamp(),
+            'delivery_time': SlackMessageConsumer.get_timestamp()
         }))
 
     async def slack_status(self, event):
@@ -254,5 +291,22 @@ class SlackNotificationConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps({
             'type': 'status_update',
             'status': event['status'],
+            'timestamp': SlackMessageConsumer.get_timestamp(),
+            'delivery_time': SlackMessageConsumer.get_timestamp()
+        }))
+
+    async def typing_indicator(self, event):
+        """Handle typing indicators in notification consumer"""
+        await self.send(text_data=json.dumps({
+            'type': 'typing_indicator',
+            'data': event['data'],
+            'timestamp': SlackMessageConsumer.get_timestamp()
+        }))
+
+    async def presence_update(self, event):
+        """Handle presence updates in notification consumer"""
+        await self.send(text_data=json.dumps({
+            'type': 'presence_update',
+            'data': event['data'],
             'timestamp': SlackMessageConsumer.get_timestamp()
         }))

@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Slack Real-Time Client Library Example</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .status.connected {
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+        }
+        .status.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+        .status.connecting {
+            background: #fff3cd;
+            color: #856404;
+            border: 2px solid #ffeaa7;
+        }
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        button {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,123,255,0.3);
+        }
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .messages {
+            height: 400px;
+            overflow-y: auto;
+            border: 2px solid #e9ecef;
+            padding: 15px;
+            background: #fafafa;
+            border-radius: 8px;
+            font-family: 'SF Mono', Monaco, monospace;
+        }
+        .message {
+            margin: 8px 0;
+            padding: 10px 12px;
+            background: white;
+            border-radius: 6px;
+            border-left: 4px solid #007bff;
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .message.channel { border-left-color: #28a745; }
+        .message.dm { border-left-color: #dc3545; }
+        .message.notification { border-left-color: #ffc107; }
+        .message.error { border-left-color: #fd7e14; background: #fff5f5; }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 2em;
+            font-weight: 700;
+            color: #007bff;
+        }
+        .stat-label {
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+        .code-example {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 15px;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+        .timestamp {
+            color: #6c757d;
+            font-size: 0.8em;
+            float: right;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Slack Real-Time Client Library Example</h1>
+        <p>This example demonstrates how to use the <code>SlackRealTimeClient</code> JavaScript library for easy integration with Slack real-time messaging.</p>
+
+        <div id="status" class="status disconnected">
+            Status: Disconnected
+        </div>
+
+        <div class="controls">
+            <button onclick="connectClient()">🔌 Connect</button>
+            <button onclick="disconnectClient()">❌ Disconnect</button>
+            <button onclick="testConnection()">⚡ Test Connection</button>
+            <button onclick="subscribeToChannel()">📺 Subscribe to Channel</button>
+            <button onclick="clearMessages()">🗑️ Clear Messages</button>
+            <button onclick="showStats()">📊 Show Statistics</button>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div id="message-count" class="stat-number">0</div>
+                <div class="stat-label">Messages</div>
+            </div>
+            <div class="stat-card">
+                <div id="connection-time" class="stat-number">--</div>
+                <div class="stat-label">Uptime (s)</div>
+            </div>
+            <div class="stat-card">
+                <div id="latency" class="stat-number">--</div>
+                <div class="stat-label">Latency (ms)</div>
+            </div>
+            <div class="stat-card">
+                <div id="error-count" class="stat-number">0</div>
+                <div class="stat-label">Errors</div>
+            </div>
+        </div>
+
+        <h3>📨 Real-Time Messages</h3>
+        <div id="messages" class="messages">
+            <div class="message notification">
+                <strong>Welcome!</strong> Click "Connect" to start receiving real-time Slack messages using the client library.
+                <span class="timestamp">Ready</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>📚 Code Example</h2>
+        <p>Here's how this example uses the SlackRealTimeClient library:</p>
+
+        <div class="code-example">// Initialize the client
+const client = new SlackRealTimeClient({
+    host: window.location.host,
+    secure: window.location.protocol === 'https:',
+    debug: true,
+    enableReconnection: true,
+    maxReconnectAttempts: 5
+});
+
+// Listen for different types of messages
+client.on('channel_message', (message) => {
+    addMessage(`📢 Channel: ${message.text}`, 'channel');
+});
+
+client.on('direct_message', (message) => {
+    addMessage(`💬 DM: ${message.text}`, 'dm');
+});
+
+client.on('connected', () => {
+    updateStatus('connected', 'Connected via Client Library');
+});
+
+// Connect to Slack
+client.connect();</div>
+
+        <h3>🎯 Available Events</h3>
+        <ul>
+            <li><code>connected</code> - Successfully connected to Slack</li>
+            <li><code>disconnected</code> - Disconnected from Slack</li>
+            <li><code>channel_message</code> - New channel message received</li>
+            <li><code>direct_message</code> - New direct message received</li>
+            <li><code>typing</code> - User typing indicator</li>
+            <li><code>reaction</code> - Message reaction added/removed</li>
+            <li><code>notification</code> - General notifications</li>
+            <li><code>error</code> - Connection or parsing errors</li>
+            <li><code>reconnecting</code> - Attempting to reconnect</li>
+        </ul>
+
+        <h3>⚡ Features</h3>
+        <ul>
+            <li><strong>Automatic Reconnection:</strong> Reconnects automatically with exponential backoff</li>
+            <li><strong>Message Queuing:</strong> Queues messages when disconnected and sends when reconnected</li>
+            <li><strong>Performance Monitoring:</strong> Tracks latency, uptime, and error rates</li>
+            <li><strong>Event-Driven:</strong> Clean event-based API for handling different message types</li>
+            <li><strong>Heartbeat:</strong> Keeps connection alive with periodic ping/pong</li>
+            <li><strong>Subscriptions:</strong> Subscribe to specific workspaces or channels</li>
+        </ul>
+    </div>
+
+    <!-- Include the SlackRealTimeClient library -->
+    <script src="/static/js/slack-realtime-client.js"></script>
+
+    <script>
+        let client = null;
+        let statsTimer = null;
+
+        // Initialize client
+        function initializeClient() {
+            client = new SlackRealTimeClient({
+                host: window.location.host,
+                secure: window.location.protocol === 'https:',
+                debug: true,
+                enableReconnection: true,
+                maxReconnectAttempts: 5,
+                reconnectInterval: 3000
+            });
+
+            // Set up event listeners
+            client.on('connected', () => {
+                updateStatus('connected', '✅ Connected via Client Library');
+                addMessage('🎉 Successfully connected to Slack real-time messaging!', 'notification');
+                startStatsTimer();
+            });
+
+            client.on('disconnected', (data) => {
+                updateStatus('disconnected', '❌ Disconnected');
+                addMessage(`🔴 Disconnected: ${data.detail?.reason || 'Unknown reason'}`, 'error');
+                stopStatsTimer();
+            });
+
+            client.on('reconnecting', (data) => {
+                updateStatus('connecting', `🔄 Reconnecting (attempt ${data.detail.attempt})`);
+                addMessage(`🔄 Reconnection attempt ${data.detail.attempt}...`, 'notification');
+            });
+
+            client.on('channel_message', (data) => {
+                const message = data.detail;
+                addMessage(`📢 <strong>Channel:</strong> ${message.text || 'No text'}<br>
+                           <small>From: ${message.user_id} in ${message.channel_name || message.channel_id}</small>`, 'channel');
+            });
+
+            client.on('direct_message', (data) => {
+                const message = data.detail;
+                addMessage(`💬 <strong>DM:</strong> ${message.text || 'No text'}<br>
+                           <small>From: ${message.user_id}</small>`, 'dm');
+            });
+
+            client.on('typing', (data) => {
+                const typing = data.detail;
+                addMessage(`⌨️ ${typing.user_id} is typing in ${typing.channel_id}`, 'notification');
+            });
+
+            client.on('reaction', (data) => {
+                const reaction = data.detail;
+                addMessage(`👍 Reaction: ${reaction.reaction || '👍'} by ${reaction.user_id}`, 'notification');
+            });
+
+            client.on('notification', (data) => {
+                addMessage(`🔔 Notification: ${JSON.stringify(data.detail, null, 2)}`, 'notification');
+            });
+
+            client.on('error', (data) => {
+                const error = data.detail;
+                addMessage(`❌ Error: ${error.type} - ${error.error}`, 'error');
+                updateErrorCount();
+            });
+        }
+
+        function connectClient() {
+            if (!client) {
+                initializeClient();
+            }
+
+            updateStatus('connecting', '🔄 Connecting...');
+            client.connect();
+        }
+
+        function disconnectClient() {
+            if (client) {
+                client.disconnect();
+                stopStatsTimer();
+            }
+        }
+
+        async function testConnection() {
+            if (!client || !client.isConnected) {
+                addMessage('❌ Cannot test: Not connected', 'error');
+                return;
+            }
+
+            addMessage('⚡ Running connection test...', 'notification');
+
+            try {
+                const result = await client.testConnection();
+
+                if (result.success) {
+                    addMessage(`✅ Connection test successful! Latency: ${result.latency.toFixed(1)}ms`, 'notification');
+                    document.getElementById('latency').textContent = `${result.latency.toFixed(1)}ms`;
+                } else {
+                    addMessage(`❌ Connection test failed: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                addMessage(`❌ Connection test error: ${error.message}`, 'error');
+            }
+        }
+
+        function subscribeToChannel() {
+            if (!client || !client.isConnected) {
+                addMessage('❌ Cannot subscribe: Not connected', 'error');
+                return;
+            }
+
+            const channelId = prompt('Enter Channel ID (e.g., C1234567890):');
+            if (channelId) {
+                client.subscribe({ channelId: channelId });
+                addMessage(`📺 Subscribed to channel: ${channelId}`, 'notification');
+            }
+        }
+
+        function showStats() {
+            if (!client) {
+                addMessage('❌ No client available', 'error');
+                return;
+            }
+
+            const stats = client.getStats();
+            addMessage(`📊 <strong>Statistics:</strong><br>
+                       Connected: ${stats.isConnected}<br>
+                       Messages: ${stats.messageCount}<br>
+                       Errors: ${stats.errorCount}<br>
+                       Uptime: ${(stats.uptime / 1000).toFixed(1)}s<br>
+                       Avg Latency: ${stats.averageLatency.toFixed(1)}ms<br>
+                       Queue Size: ${stats.queueSize}`, 'notification');
+        }
+
+        function clearMessages() {
+            document.getElementById('messages').innerHTML = '';
+        }
+
+        function addMessage(content, type = 'notification') {
+            const messagesEl = document.getElementById('messages');
+            const messageEl = document.createElement('div');
+            messageEl.className = `message ${type}`;
+
+            const timestamp = new Date().toLocaleTimeString();
+            messageEl.innerHTML = `${content}<span class="timestamp">${timestamp}</span>`;
+
+            messagesEl.appendChild(messageEl);
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+
+            // Update message count
+            const currentCount = parseInt(document.getElementById('message-count').textContent) || 0;
+            document.getElementById('message-count').textContent = currentCount + 1;
+        }
+
+        function updateStatus(status, message) {
+            const statusEl = document.getElementById('status');
+            statusEl.className = `status ${status}`;
+            statusEl.textContent = `Status: ${message}`;
+        }
+
+        function updateErrorCount() {
+            const currentCount = parseInt(document.getElementById('error-count').textContent) || 0;
+            document.getElementById('error-count').textContent = currentCount + 1;
+        }
+
+        function startStatsTimer() {
+            if (statsTimer) clearInterval(statsTimer);
+
+            statsTimer = setInterval(() => {
+                if (client && client.isConnected) {
+                    const stats = client.getStats();
+                    document.getElementById('connection-time').textContent = Math.floor(stats.uptime / 1000);
+
+                    if (stats.averageLatency > 0) {
+                        document.getElementById('latency').textContent = `${stats.averageLatency.toFixed(1)}ms`;
+                    }
+                }
+            }, 1000);
+        }
+
+        function stopStatsTimer() {
+            if (statsTimer) {
+                clearInterval(statsTimer);
+                statsTimer = null;
+            }
+        }
+
+        // Initialize on page load
+        window.addEventListener('load', () => {
+            addMessage('🚀 Client library example loaded. Ready to connect!', 'notification');
+            addMessage('💡 This demonstrates the SlackRealTimeClient JavaScript library', 'notification');
+        });
+    </script>
+</body>
+</html>

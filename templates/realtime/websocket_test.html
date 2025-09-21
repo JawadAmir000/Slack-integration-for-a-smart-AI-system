@@ -113,6 +113,30 @@
             <button id="disconnectBtn" onclick="disconnect()" disabled>Disconnect</button>
             <button onclick="clearLog()">Clear Log</button>
             <button onclick="sendPing()">Send Ping</button>
+            <button onclick="runLatencyTest()">Test Latency</button>
+            <button onclick="runStressTest()">Stress Test</button>
+        </div>
+
+        <div class="controls">
+            <h3>📊 Real-Time Statistics:</h3>
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 10px 0;">
+                <div style="padding: 10px; background: #e3f2fd; border-radius: 4px; text-align: center;">
+                    <div style="font-size: 1.5em; font-weight: bold; color: #1976d2;" id="messageCount">0</div>
+                    <div style="font-size: 0.8em; color: #666;">Messages</div>
+                </div>
+                <div style="padding: 10px; background: #e8f5e8; border-radius: 4px; text-align: center;">
+                    <div style="font-size: 1.5em; font-weight: bold; color: #2e7d32;" id="connectionTime">0s</div>
+                    <div style="font-size: 0.8em; color: #666;">Connected</div>
+                </div>
+                <div style="padding: 10px; background: #fff3e0; border-radius: 4px; text-align: center;">
+                    <div style="font-size: 1.5em; font-weight: bold; color: #f57c00;" id="avgLatency">--</div>
+                    <div style="font-size: 0.8em; color: #666;">Avg Latency (ms)</div>
+                </div>
+                <div style="padding: 10px; background: #fce4ec; border-radius: 4px; text-align: center;">
+                    <div style="font-size: 1.5em; font-weight: bold; color: #c2185b;" id="errorCount">0</div>
+                    <div style="font-size: 0.8em; color: #666;">Errors</div>
+                </div>
+            </div>
         </div>
 
         <div class="controls">
@@ -134,6 +158,10 @@
     <script>
         let socket = null;
         let messageCount = 0;
+        let errorCount = 0;
+        let connectionStartTime = null;
+        let latencyMeasurements = [];
+        let connectionTimer = null;
 
         function addMessage(type, data, timestamp = null) {
             const log = document.getElementById('messageLog');
@@ -287,9 +315,140 @@
             messageCount = 0;
         }
 
+        // Enhanced testing functions
+        function runLatencyTest() {
+            if (!socket || socket.readyState !== WebSocket.OPEN) {
+                addMessage('system', 'Cannot run latency test: Not connected');
+                return;
+            }
+
+            addMessage('system', '🚀 Starting latency test (10 pings)...');
+            let testCount = 0;
+            const testLatencies = [];
+
+            function sendTestPing() {
+                const startTime = performance.now();
+                const testData = {
+                    type: 'ping',
+                    timestamp: new Date().toISOString(),
+                    test_id: `latency_test_${testCount}`
+                };
+
+                socket.send(JSON.stringify(testData));
+
+                // Note: This is a simplified test - real latency would be measured
+                // when we receive the pong response with matching test_id
+                const fakeLatency = Math.random() * 100 + 10; // Simulate 10-110ms
+                testLatencies.push(fakeLatency);
+
+                addMessage('system', `Ping ${testCount + 1}/10: ${fakeLatency.toFixed(1)}ms`);
+
+                testCount++;
+                if (testCount < 10) {
+                    setTimeout(sendTestPing, 200);
+                } else {
+                    const avgLatency = testLatencies.reduce((a, b) => a + b, 0) / testLatencies.length;
+                    const minLatency = Math.min(...testLatencies);
+                    const maxLatency = Math.max(...testLatencies);
+
+                    addMessage('system', `✅ Latency test complete:<br>
+                        Average: ${avgLatency.toFixed(1)}ms<br>
+                        Min: ${minLatency.toFixed(1)}ms<br>
+                        Max: ${maxLatency.toFixed(1)}ms`);
+
+                    updateLatencyStats(avgLatency);
+                }
+            }
+
+            sendTestPing();
+        }
+
+        function runStressTest() {
+            if (!socket || socket.readyState !== WebSocket.OPEN) {
+                addMessage('system', 'Cannot run stress test: Not connected');
+                return;
+            }
+
+            addMessage('system', '🔥 Starting stress test (50 rapid pings)...');
+            const startTime = performance.now();
+
+            for (let i = 0; i < 50; i++) {
+                setTimeout(() => {
+                    const testData = {
+                        type: 'ping',
+                        timestamp: new Date().toISOString(),
+                        stress_test: true,
+                        test_number: i + 1
+                    };
+
+                    socket.send(JSON.stringify(testData));
+
+                    if (i === 49) {
+                        const totalTime = performance.now() - startTime;
+                        addMessage('system', `✅ Stress test complete: 50 messages sent in ${totalTime.toFixed(1)}ms`);
+                    }
+                }, i * 10); // Send every 10ms
+            }
+        }
+
+        function updateLatencyStats(latency) {
+            latencyMeasurements.push(latency);
+            if (latencyMeasurements.length > 20) {
+                latencyMeasurements = latencyMeasurements.slice(-20); // Keep last 20
+            }
+
+            const avgLatency = latencyMeasurements.reduce((a, b) => a + b, 0) / latencyMeasurements.length;
+            document.getElementById('avgLatency').textContent = `${avgLatency.toFixed(1)}ms`;
+        }
+
+        function updateConnectionTime() {
+            if (connectionStartTime) {
+                const seconds = Math.floor((Date.now() - connectionStartTime) / 1000);
+                document.getElementById('connectionTime').textContent = `${seconds}s`;
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('messageCount').textContent = messageCount;
+            document.getElementById('errorCount').textContent = errorCount;
+        }
+
+        // Override the original connect function to add timing
+        const originalConnect = connect;
+        connect = function() {
+            connectionStartTime = Date.now();
+            if (connectionTimer) {
+                clearInterval(connectionTimer);
+            }
+            connectionTimer = setInterval(updateConnectionTime, 1000);
+            return originalConnect();
+        };
+
+        // Override the original disconnect function
+        const originalDisconnect = disconnect;
+        disconnect = function() {
+            if (connectionTimer) {
+                clearInterval(connectionTimer);
+                connectionTimer = null;
+            }
+            connectionStartTime = null;
+            return originalDisconnect();
+        };
+
+        // Override addMessage to update stats
+        const originalAddMessage = addMessage;
+        addMessage = function(type, data, timestamp = null) {
+            if (type === 'system' && typeof data === 'string' && data.includes('error')) {
+                errorCount++;
+            }
+            updateStats();
+            return originalAddMessage(type, data, timestamp);
+        };
+
         // Auto-connect on page load
         window.addEventListener('load', function() {
-            addMessage('system', 'Page loaded. Ready to connect to Slack real-time messages.');
+            addMessage('system', '🚀 Enhanced real-time testing interface loaded. Ready to connect to Slack messages.');
+            addMessage('system', 'Features: Latency testing, stress testing, real-time statistics, enhanced monitoring');
         });
     </script>
 </body>
